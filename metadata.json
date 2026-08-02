@@ -1,0 +1,6 @@
+{
+  "name": "Neuro Next",
+  "description": "O seu espaço seguro e simples para organizar pensamentos, rotina e documentos de saúde mental com a assistente Lyai.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
