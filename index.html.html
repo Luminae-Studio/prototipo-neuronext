@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neuro Next · Protótipo interativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Itim&family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens (troque aqui as fontes e cores do seu Figma) ===== */
+:root{
+  --font-title:'Itim','Trebuchet MS',system-ui,sans-serif;
+  --font-body:'Raleway','Segoe UI',system-ui,sans-serif;
+  --roxo-900:#24123D;
+  --roxo-800:#2E1850;
+  --roxo-700:#3B1A63;
+  --roxo-500:#6A2BC4;
+  --lilas-200:#E9E0F7;
+  --lilas-100:#F5F0FC;
+  --lilas-borda:#CDBDEB;
+  --dourado:#E9B949;
+  --dourado-texto:#F2C75C;
+  --texto:#2E1850;
+  --texto-suave:#5E5770;
+  --borda:#E3DEEA;
+  --card:#FAF9FC;
+  --perigo:#B3261E;
+  --page:#EEE8F6;
+  --page-text:#2E1850;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --page:#15101E; --page-text:#E9E0F7; }
+}
+:root[data-theme="dark"]{ --page:#15101E; --page-text:#E9E0F7; }
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);font-family:var(--font-body);color:var(--page-text);overflow-x:hidden}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--dourado);outline-offset:2px}
+
+.stage{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px}
+.hint{font-size:13px;max-width:400px;text-align:center;margin:0;line-height:1.4;opacity:.85}
+.frame{position:relative}
+.phone{position:absolute;top:0;left:0;width:390px;height:800px;transform-origin:top left;
+  border:10px solid #1B1224;border-radius:46px;background:#fff;overflow:hidden;color:var(--texto);
+  box-shadow:0 24px 60px rgba(36,18,61,.35)}
+.statusbar{position:absolute;top:0;left:0;right:0;height:30px;display:flex;justify-content:space-between;align-items:center;
+  padding:0 26px;font-size:12px;font-weight:600;color:#fff;z-index:5;pointer-events:none}
+.app{position:absolute;inset:0;display:flex;flex-direction:column}
+.view{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+
+/* ===== Header ===== */
+.hdr{background:linear-gradient(165deg,var(--roxo-700),var(--roxo-800));color:#fff;padding:42px 22px 20px;flex-shrink:0}
+.eyebrow{font-family:var(--font-title);font-size:13px;opacity:.85;margin:0 0 4px}
+.hdr h1{font-family:var(--font-title);font-weight:400;font-size:25px;line-height:1.2;margin:0}
+.resumo{color:var(--dourado-texto);font-size:14px;margin:6px 0 0}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:16px}
+.day{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:8px;padding:6px 0 9px;font-family:var(--font-title);
+  position:relative;display:flex;flex-direction:column;align-items:center;line-height:1.1;font-size:12px}
+.day b{font-size:17px;font-weight:400}
+.day.today:not(.on){box-shadow:inset 0 0 0 1px rgba(233,185,73,.8)}
+.day.on{background:var(--dourado);color:var(--roxo-900)}
+.day.has::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--dourado);position:absolute;bottom:3px}
+.day.on.has::after{background:var(--roxo-900)}
+.ptabs{display:grid;grid-template-columns:1fr 1fr;margin:16px -22px -20px}
+.ptabs button{background:none;border:0;border-bottom:3px solid transparent;color:rgba(255,255,255,.7);padding:12px 4px;font-size:15px}
+.ptabs button.on{color:#fff;border-color:var(--dourado);font-weight:600}
+
+/* ===== Conteúdo ===== */
+.scroll{flex:1;overflow-y:auto;padding:16px 18px 100px}
+.scroll::-webkit-scrollbar{width:0}
+.section-title{font-family:var(--font-title);font-size:19px;margin:4px 0 12px;font-weight:400;color:var(--roxo-700)}
+.empty{text-align:center;color:var(--texto-suave);padding:36px 20px;line-height:1.5;border:1.5px dashed var(--lilas-borda);border-radius:16px;margin-top:8px}
+
+.lyai-card{border:1px solid var(--borda);border-radius:18px;padding:14px 16px 16px;margin-bottom:16px;background:#fff;box-shadow:0 2px 8px rgba(46,24,80,.06)}
+.lyai-top{display:flex;gap:12px;align-items:flex-start}
+.lyai-avatar{width:44px;height:44px;border-radius:50%;background:var(--roxo-700);color:var(--dourado);display:grid;place-items:center;flex-shrink:0}
+.lyai-avatar svg{width:24px;height:24px}
+.lyai-name{font-family:var(--font-title);font-size:20px;margin:0;color:var(--roxo-700);display:flex;align-items:center;gap:8px}
+.tag-mini{font-family:var(--font-body);font-size:11px;background:#EDEAF1;color:var(--texto-suave);padding:2px 6px;border-radius:4px}
+.lyai-msg{margin:2px 0 12px;color:var(--texto-suave);font-size:14px;line-height:1.4;min-height:20px}
+.lyai-msg.fresh{animation:fresh .5s ease}
+@keyframes fresh{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.chips{display:flex;gap:8px}
+.chips.scroll-x{overflow-x:auto;padding:2px 2px 6px;margin:0 -18px 10px;padding-left:18px;padding-right:18px}
+.chips.scroll-x::-webkit-scrollbar{height:0}
+.chips.wrap{flex-wrap:wrap;margin:10px 0 14px}
+.chip{flex-shrink:0;border-radius:999px;background:var(--lilas-200);color:var(--roxo-700);font-family:var(--font-title);
+  font-size:15px;padding:6px 15px;border:2px solid transparent;transition:background .15s}
+.chip.sm{font-size:13px;padding:3px 12px}
+.chip.on{background:var(--roxo-700);color:#fff;border-color:var(--dourado)}
+
+.card{position:relative;background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.card h3{font-family:var(--font-title);font-weight:400;font-size:19px;margin:6px 0 4px;color:var(--roxo-700);line-height:1.2}
+.card p{margin:0;color:var(--texto-suave);font-size:14px;line-height:1.45}
+.meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{background:var(--lilas-200);color:var(--roxo-700);font-size:13px;padding:2px 10px;border-radius:999px}
+.date{font-size:12px;color:var(--roxo-500);font-weight:600}
+.prio{font-family:var(--font-title);font-size:13px;color:#7A5A12}
+.prio.Alta{color:#9A3A12}
+.fav-mark{color:var(--dourado);display:inline-flex}
+.fav-mark svg{width:16px;height:16px}
+.icon-btn{background:none;border:0;padding:6px;border-radius:8px;color:#A493C9;display:inline-grid;place-items:center}
+.icon-btn:hover{background:var(--lilas-100)}
+.icon-btn svg{width:20px;height:20px}
+.icon-btn.danger{color:#C0584F}
+.more{margin-left:auto;color:var(--roxo-700)}
+.card-actions{position:absolute;top:10px;right:8px;display:flex}
+
+.popover{position:absolute;right:12px;top:44px;z-index:20;background:#fff;border-radius:18px;padding:8px;min-width:220px;
+  box-shadow:0 10px 30px rgba(36,18,61,.25);border:1px solid var(--lilas-borda);animation:pop .15s ease}
+.popover button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;padding:11px 12px;border-radius:10px;font-size:15px}
+.popover button:hover{background:var(--lilas-100)}
+.popover .dot{width:12px;height:12px;border-radius:50%;background:var(--roxo-700);flex-shrink:0}
+.popover .danger{color:var(--perigo)}
+.popover .danger .dot{background:var(--perigo)}
+
+.appt{display:flex;gap:12px;padding-right:90px}
+.check{width:26px;height:26px;border-radius:6px;border:2px solid var(--lilas-borda);background:#fff;flex-shrink:0;margin-top:26px;display:grid;place-items:center;color:#fff;padding:0}
+.check svg{width:16px;height:16px}
+.check[aria-pressed="true"]{background:var(--roxo-700);border-color:var(--roxo-700)}
+.appt.done h3,.appt.done p{text-decoration:line-through;opacity:.55}
+
+.doc{display:flex;gap:12px;padding-right:84px}
+.doc-ic{width:36px;height:36px;border-radius:50%;background:var(--lilas-200);color:var(--roxo-700);display:grid;place-items:center;flex-shrink:0;margin-top:30px}
+.doc-ic svg{width:18px;height:18px}
+.file{font-size:12px;color:var(--roxo-500);margin-top:4px}
+
+.pro-top{display:flex;gap:12px;align-items:center;padding-right:40px}
+.avatar{width:46px;height:46px;border-radius:50%;background:var(--roxo-700);color:var(--dourado);display:grid;place-items:center;font-family:var(--font-title);font-size:18px;flex-shrink:0}
+.pro-top h3{margin:0}
+.pro-top small{color:var(--texto-suave)}
+.pro-info{margin:10px 0 12px;font-size:14px;color:var(--texto-suave);line-height:1.6}
+.pro-info a{color:var(--roxo-500)}
+.btn-soft{width:100%;background:#fff;border:1.5px solid var(--lilas-borda);border-radius:12px;padding:10px 12px;color:var(--roxo-700);font-weight:600;font-size:14px;text-align:left;display:flex;gap:10px;align-items:center}
+.btn-soft svg{width:18px;height:18px;flex-shrink:0}
+
+/* ===== Botões ===== */
+.fab{position:absolute;right:18px;bottom:16px;background:var(--roxo-700);color:#fff;border:0;border-radius:14px;padding:13px 20px;
+  font-size:17px;display:flex;align-items:center;gap:6px;box-shadow:0 6px 16px rgba(36,18,61,.35);z-index:4}
+.fab svg{width:18px;height:18px}
+.btn-outline{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;border:1.5px solid var(--roxo-700);
+  border-radius:10px;padding:10px;color:var(--roxo-700);font-weight:700;font-size:16px}
+.btn-outline svg{width:20px;height:20px}
+.btn-primary{background:var(--roxo-700);color:var(--dourado-texto);border:0;border-radius:10px;padding:11px 20px;font-family:var(--font-title);font-size:19px}
+.btn-primary.light{background:var(--dourado);color:var(--roxo-900)}
+.btn-text{background:none;border:0;padding:11px 14px;color:var(--roxo-700);font-weight:700;font-size:16px;border-radius:10px}
+.btn-text.danger{color:var(--perigo)}
+.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,.7);color:#fff;border-radius:10px;padding:11px 20px;font-size:16px;font-weight:600}
+.block{width:100%}
+.actions{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:18px}
+.stack{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.share-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.share-btn{background:#fff;border:1.5px solid var(--lilas-borda);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--roxo-700);font-weight:600}
+.share-btn svg{width:18px;height:18px}
+.share-btn.wide{grid-column:1/-1}
+
+/* ===== Tabbar ===== */
+.tabbar{flex-shrink:0;height:74px;background:var(--roxo-800);display:grid;grid-template-columns:repeat(4,1fr);padding:8px 6px 10px}
+.tab{background:none;border:0;color:#C9BEDB;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:14px;position:relative}
+.tab .pill{width:58px;height:30px;border-radius:999px;display:grid;place-items:center;transition:background .2s}
+.tab svg{width:22px;height:22px}
+.tab.on{color:var(--dourado-texto);font-weight:700}
+.tab.on .pill{background:var(--dourado);color:var(--roxo-900)}
+.tab.off{opacity:.55}
+.soon{position:absolute;top:-2px;right:6px;background:var(--lilas-200);color:var(--roxo-700);font-size:9px;padding:1px 5px;border-radius:6px;font-weight:700}
+
+/* ===== Modais ===== */
+.overlay{position:absolute;inset:0;background:rgba(18,8,32,.5);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;animation:fade .15s ease}
+.sheet{background:#fff;border-radius:28px;padding:24px 22px;width:100%;max-height:94%;overflow-y:auto;animation:pop .2s ease}
+.sheet h2{font-family:var(--font-title);font-weight:400;font-size:23px;color:var(--roxo-700);margin:0;line-height:1.2}
+.sheet .sub{font-family:var(--font-title);color:var(--roxo-700);margin:8px 0 0;font-size:16px}
+.sheet .body{color:var(--texto-suave);line-height:1.5;margin:10px 0 0}
+.field{width:100%;border:1.5px solid var(--lilas-borda);border-radius:12px;padding:12px 14px;font-size:15px;background:#fff;margin-bottom:12px;outline:none}
+.field:focus{border-color:var(--roxo-500)}
+.field::placeholder{color:#8A8299}
+.field.invalid{border-color:var(--perigo);animation:shake .3s}
+.area-wrap{position:relative}
+.area{min-height:150px;resize:none;padding-right:56px;line-height:1.45;display:block}
+.mic{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:50%;background:var(--roxo-700);color:#fff;border:0;display:grid;place-items:center}
+.mic svg{width:20px;height:20px}
+.mic.rec{background:var(--perigo);animation:pulse 1s infinite}
+.status{font-size:13px;color:var(--texto-suave);min-height:18px;margin:0}
+.status.err{color:var(--perigo);font-weight:600}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 12px}
+.row label{color:var(--texto-suave)}
+.help{font-size:12px;color:var(--texto-suave);margin:-6px 0 12px}
+.time{border:1.5px solid var(--roxo-700);border-radius:10px;padding:6px 10px;color:var(--roxo-500);font-size:15px}
+.toggle{width:58px;height:30px;border-radius:999px;border:0;background:#CBBDE6;position:relative;padding:0;transition:background .2s}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:#EEE;transition:transform .2s,background .2s}
+.toggle[aria-checked="true"]{background:var(--roxo-700)}
+.toggle[aria-checked="true"]::after{transform:translateX(28px);background:var(--dourado)}
+.toggle-label{font-family:var(--font-title);color:var(--roxo-700);font-size:17px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+.opt{background:#fff;border:1.5px solid var(--lilas-borda);border-radius:12px;padding:12px 8px;color:var(--roxo-700);font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px}
+.opt svg{width:22px;height:22px}
+.opt.ok{border-color:var(--roxo-700);background:var(--lilas-100)}
+.pick{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.pick label{display:flex;align-items:center;gap:10px;border:1.5px solid var(--lilas-borda);border-radius:12px;padding:10px 12px;cursor:pointer}
+.pick input{accent-color:var(--roxo-700);width:18px;height:18px}
+.apoio{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:10px}
+.apoio li{border:1px solid var(--borda);border-radius:14px;padding:12px 14px;background:var(--card);line-height:1.45;font-size:14px;color:var(--texto-suave)}
+.apoio b{display:block;color:var(--roxo-700);font-size:15px}
+.apoio a{color:var(--roxo-500);font-weight:600}
+.steps{display:flex;gap:6px;margin-bottom:16px}
+.steps i{height:4px;flex:1;border-radius:4px;background:var(--lilas-200)}
+.steps i.on{background:var(--roxo-700)}
+.big-avatar{width:64px;height:64px;border-radius:50%;background:var(--roxo-700);color:var(--dourado);display:grid;place-items:center;margin-bottom:14px}
+.big-avatar svg{width:34px;height:34px}
+
+.overlay.full{padding:0;background:transparent}
+.overlay.full .sheet{height:100%;max-height:none;border-radius:0;background:linear-gradient(170deg,var(--roxo-700),var(--roxo-900));color:#fff;
+  display:flex;flex-direction:column;justify-content:center;padding:40px 28px}
+.overlay.full h2{color:#fff;font-size:30px}
+.notif-app{font-size:13px;opacity:.75;margin:0 0 26px;display:flex;align-items:center;gap:8px}
+.notif-app svg{width:16px;height:16px}
+.notif-title{font-family:var(--font-title);font-size:26px;color:var(--dourado-texto);margin:6px 0 4px}
+.notif-desc{opacity:.85;margin:0 0 32px;line-height:1.45}
+
+.toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%) translateY(10px);background:var(--roxo-900);color:#fff;padding:11px 16px;
+  border-radius:12px;font-size:14px;width:max-content;max-width:330px;text-align:center;opacity:0;pointer-events:none;transition:.25s;z-index:60;
+  box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{opacity:0;transform:scale(.96)}}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@keyframes pulse{50%{box-shadow:0 0 0 8px rgba(179,38,30,.2)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="stage">
+  <p class="hint" id="hint">Protótipo interativo do Neuro Next. Crie registros, compromissos e documentos. Dica: escreva “não aguento mais” no Diário pra ver a Lyai mudar de tom.</p>
+  <div class="frame" id="frame">
+    <div class="phone" id="phone">
+      <div class="statusbar"><span id="clock"></span><span>5G ▮▮▮</span></div>
+      <div class="app">
+        <div class="view" id="view"></div>
+        <nav class="tabbar" id="tabbar" aria-label="Navegação principal"></nav>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ===== Ícones ===== */
+const svg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ic = {
+  book: svg('<path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2z"/><path d="M13 3v7l2-1.5 2 1.5V3"/>'),
+  cal: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  folder: svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  spark: svg('<path d="M12 3l2 5.5L19.5 10 14 12l-2 6-2-6-5.5-2L10 8.5z" fill="currentColor"/><path d="M19 3v4M17 5h4M19 16v4M17 18h4"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  lines: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  more: svg('<circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/>'),
+  share: svg('<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>'),
+  trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+  mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  bell: svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>'),
+  check: svg('<path d="M5 12l5 5 9-10"/>'),
+  star: svg('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/>'),
+  chat: svg('<path d="M4 20l1.5-4A8 8 0 1 1 9 19.3z"/>'),
+  mail: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'),
+  copy: svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
+  file: svg('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'),
+  scan: svg('<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3"/>'),
+  upload: svg('<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>'),
+  send: svg('<path d="M4 12l16-8-6 16-3-6z"/>')
+};
+
+/* ===== Utilidades ===== */
+const pad = n => String(n).padStart(2, '0');
+const today = new Date();
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fmtDT = d => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+let uid = 100; const newId = () => ++uid;
+const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+const TIPOS_DIARIO = ['Pensamento', 'Sessão de terapia', 'Ideia'];
+const FILTROS = [['todos', 'Todos'], ['Pensamento', 'Pensamentos'], ['Sessão de terapia', 'Sessão de terapia'], ['Ideia', 'Ideias'], ['fav', 'Favoritos']];
+const TIPOS_ROT = ['Tarefa', 'Consulta', 'Medicamento', 'Meta'];
+const PRIO = ['Baixa', 'Média', 'Alta'];
+const TIPOS_DOC = ['Laudo', 'Exame', 'Receita', 'CNH/CPF'];
+
+/* Respostas simuladas da Lyai (tom de voz definido no projeto) */
+const RESP = {
+  'Pensamento': 'Anotado. Tirar da cabeça já alivia um pouco.',
+  'Sessão de terapia': 'Guardei. Tá tudo aqui pra próxima sessão.',
+  'Ideia': 'Ideia guardada. Depois a gente vê se vira compromisso.'
+};
+const SENSIVEL = ['nao aguento', 'sem saida', 'desistir de tudo', 'nao quero mais viver', 'me machucar', 'sumir de vez',
+  'nao consigo mais', 'muito pesado', 'sozinha demais', 'sozinho demais', 'crise de panico', 'queria morrer', 'nao vejo sentido'];
+const sensivel = t => SENSIVEL.some(k => norm(t).includes(k));
+
+/* ===== Estado ===== */
+const hojeKey = keyOf(today);
+const state = {
+  tab: 'diario', filtro: 'todos', menu: null, lyaiFresh: false,
+  lyai: 'Toca aqui e desabafa. Eu guardo.',
+  entries: [{ id: 1, tipo: 'Pensamento', titulo: 'Organizando pensamentos da manhã',
+    texto: 'Hoje acordei com a cabeça cheia de tarefas soltas. Escrever aqui ajuda a tirar o peso antes do trabalho.',
+    data: new Date(today.getTime() - 3 * 3600e3), fav: false }],
+  dia: hojeKey,
+  appts: [
+    { id: 2, dia: hojeKey, tipo: 'Consulta', hora: '16:30', prio: 'Alta', titulo: 'Consulta com Dra. Ana', desc: 'Sessão quinzenal de terapia', avisar: true, feito: false },
+    { id: 3, dia: hojeKey, tipo: 'Tarefa', hora: '18:55', prio: 'Média', titulo: 'Pausa de 15 min para respiração', desc: 'Desconectar do computador e caminhar', avisar: true, feito: false }
+  ],
+  pastaTab: 'docs',
+  docs: [
+    { id: 4, tipo: 'Laudo', nome: 'Laudo de Acompanhamento Neuropsicológico', obs: 'Emitido em março/2026 com orientações de rotina.', arquivo: 'laudo-neuro.pdf' },
+    { id: 5, tipo: 'Exame', nome: 'Exame de Perfil Neurodivergente', obs: 'Guardado para consulta rápida nas sessões.', arquivo: 'exame-perfil.pdf' }
+  ],
+  pros: [{ id: 6, nome: 'Dra. Ana Silva', esp: 'Psicóloga TCC', tel: '(11) 98765-4321', email: 'ana.silva@psico.com' }]
+};
+
+const phone = document.getElementById('phone');
+const view = document.getElementById('view');
+const tabbar = document.getElementById('tabbar');
+
+/* ===== Views ===== */
+function saudacao() { const h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'; }
+function lyaiSay(msg) { state.lyai = msg; state.lyaiFresh = true; }
+
+function viewDiario() {
+  const f = state.filtro;
+  const list = state.entries.filter(e => f === 'todos' || (f === 'fav' ? e.fav : e.tipo === f)).sort((a, b) => b.data - a.data);
+  const vazio = state.entries.length
+    ? 'Nada nesse filtro por enquanto.'
+    : 'Ainda não tem nada por aqui. Um pensamento solto já é um bom começo.';
+  return `
+  <header class="hdr">
+    <p class="eyebrow">${saudacao()}. Bora ver o que rolou hoje?</p>
+    <h1>O que tá passando pela sua cabeça?</h1>
+  </header>
+  <div class="scroll">
+    <section class="lyai-card" aria-label="Lyai">
+      <div class="lyai-top">
+        <span class="lyai-avatar">${ic.spark}</span>
+        <div><p class="lyai-name">Lyai <span class="tag-mini">Assistente cognitivo</span></p>
+        <p class="lyai-msg ${state.lyaiFresh ? 'fresh' : ''}" aria-live="polite">${esc(state.lyai)}</p></div>
+      </div>
+      <button class="btn-outline" data-a="novo-pensamento">${ic.lines} Escrever um pensamento</button>
+    </section>
+    <div class="chips scroll-x">${FILTROS.map(([k, l]) =>
+      `<button class="chip ${f === k ? 'on' : ''}" data-a="filtro" data-v="${k}" aria-pressed="${f === k}">${l}</button>`).join('')}</div>
+    ${list.length ? list.map(cardEntry).join('') : `<div class="empty">${vazio}</div>`}
+  </div>
+  <button class="fab" data-a="novo-pensamento">${ic.plus} Registrar</button>`;
+}
+
+function cardEntry(e) {
+  return `<article class="card">
+    <div class="meta">
+      <span class="tag">${esc(e.tipo)}</span><span class="date">${fmtDT(e.data)}</span>
+      ${e.fav ? `<span class="fav-mark" title="Favorito">${ic.star}</span>` : ''}
+      <button class="icon-btn more" data-a="menu" data-id="${e.id}" aria-label="Opções do registro" aria-expanded="${state.menu === e.id}">${ic.more}</button>
+    </div>
+    <h3>${esc(e.titulo)}</h3>
+    <p>${esc(e.texto)}</p>
+    ${state.menu === e.id ? `<div class="popover" role="menu">
+      <button data-a="share-entry" data-id="${e.id}"><i class="dot"></i>Compartilhar este pensamento?</button>
+      <button data-a="fav" data-id="${e.id}"><i class="dot"></i>${e.fav ? 'Tirar dos favoritos' : 'Favoritar'}</button>
+      <button class="danger" data-a="del-entry" data-id="${e.id}"><i class="dot"></i>Excluir</button>
+    </div>` : ''}
+  </article>`;
+}
+
+function semana() {
+  const d = new Date(today); d.setDate(d.getDate() - d.getDay());
+  return [...Array(7)].map((_, i) => { const x = new Date(d); x.setDate(d.getDate() + i); return x; });
+}
+function atrasado(a) {
+  if (a.feito || a.dia !== hojeKey) return false;
+  const [h, m] = a.hora.split(':').map(Number); const now = new Date();
+  return h * 60 + m < now.getHours() * 60 + now.getMinutes();
+}
+
+function viewRotina() {
+  const hoje = state.appts.filter(a => a.dia === hojeKey);
+  const atr = hoje.filter(atrasado).length;
+  const resumo = hoje.length
+    ? `${hoje.length} ${hoje.length === 1 ? 'compromisso' : 'compromissos'} hoje, ${atr ? `${atr} atrasado${atr > 1 ? 's' : ''}` : 'nenhum atrasado'}`
+    : 'Nada marcado pra hoje';
+  const list = state.appts.filter(a => a.dia === state.dia).sort((a, b) => a.hora.localeCompare(b.hora));
+  return `
+  <header class="hdr">
+    <p class="eyebrow">Rotina</p>
+    <h1>Sua semana, sem surpresas</h1>
+    <p class="resumo">${resumo}</p>
+    <div class="week">${semana().map(d => {
+      const k = keyOf(d), has = state.appts.some(a => a.dia === k);
+      return `<button class="day ${k === state.dia ? 'on' : ''} ${k === hojeKey ? 'today' : ''} ${has ? 'has' : ''}" data-a="dia" data-v="${k}"
+        aria-pressed="${k === state.dia}" aria-label="${DIAS[d.getDay()]} ${d.getDate()}">${DIAS[d.getDay()]}<b>${pad(d.getDate())}</b></button>`;
+    }).join('')}</div>
+  </header>
+  <div class="scroll">
+    ${list.length ? list.map(cardAppt).join('') : `<div class="empty">Nada marcado ainda. Bora preencher isso?</div>`}
+  </div>
+  <button class="fab" data-a="novo-compromisso">${ic.plus} Novo compromisso</button>`;
+}
+
+function cardAppt(a) {
+  return `<article class="card appt ${a.feito ? 'done' : ''}">
+    <button class="check" data-a="feito" data-id="${a.id}" aria-pressed="${a.feito}" aria-label="Marcar como concluído">${a.feito ? ic.check : ''}</button>
+    <div>
+      <div class="meta"><span class="tag">${a.tipo}</span><span class="date">${a.hora}</span><span class="prio ${a.prio}">${a.prio}</span></div>
+      <h3>${esc(a.titulo)}</h3>
+      ${a.desc ? `<p>${esc(a.desc)}</p>` : ''}
+    </div>
+    <div class="card-actions">
+      ${a.avisar && !a.feito ? `<button class="icon-btn" data-a="notif" data-id="${a.id}" aria-label="Simular aviso" title="Simular aviso">${ic.bell}</button>` : ''}
+      <button class="icon-btn" data-a="share-appt" data-id="${a.id}" aria-label="Compartilhar">${ic.share}</button>
+      <button class="icon-btn danger" data-a="del-appt" data-id="${a.id}" aria-label="Excluir">${ic.trash}</button>
+    </div>
+  </article>`;
+}
+
+function viewPasta() {
+  const docs = state.pastaTab === 'docs';
+  const body = docs
+    ? (state.docs.length ? state.docs.map(cardDoc).join('') : `<div class="empty">Seus documentos de saúde, organizados. Sem pasta perdida.</div>`)
+    : `<h2 class="section-title">Quem cuida de você?</h2>` +
+      (state.pros.length ? state.pros.map(cardPro).join('') : `<div class="empty">Ninguém cadastrado ainda. Pode ser psicóloga, médico, nutricionista…</div>`);
+  return `
+  <header class="hdr">
+    <p class="eyebrow">Pasta importante</p>
+    <h1>Tudo num lugar só</h1>
+    <div class="ptabs" role="tablist">
+      <button role="tab" class="${docs ? 'on' : ''}" aria-selected="${docs}" data-a="ptab" data-v="docs">Documentos (${state.docs.length})</button>
+      <button role="tab" class="${!docs ? 'on' : ''}" aria-selected="${!docs}" data-a="ptab" data-v="pros">Profissionais (${state.pros.length})</button>
+    </div>
+  </header>
+  <div class="scroll">${body}</div>
+  ${docs
+    ? `<button class="fab" data-a="novo-doc">${ic.plus} Adicionar documento</button>`
+    : `<button class="fab" data-a="novo-pro">${ic.plus} Novo profissional</button>`}`;
+}
+
+function cardDoc(d) {
+  return `<article class="card doc">
+    <span class="doc-ic">${ic.file}</span>
+    <div>
+      <span class="tag">${d.tipo}</span>
+      <h3>${esc(d.nome)}</h3>
+      ${d.obs ? `<p>${esc(d.obs)}</p>` : ''}
+      <div class="file">${esc(d.arquivo)}</div>
+    </div>
+    <div class="card-actions">
+      <button class="icon-btn" data-a="share-doc" data-id="${d.id}" aria-label="Compartilhar documento">${ic.share}</button>
+      <button class="icon-btn danger" data-a="del-doc" data-id="${d.id}" aria-label="Excluir documento">${ic.trash}</button>
+    </div>
+  </article>`;
+}
+
+function iniciais(n) { return n.replace(/^(dra?\.?|dr\.?)\s+/i, '').split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase(); }
+function primeiro(n) { const m = n.match(/^(dra?\.?\s+)?(\S+)/i); return (m[1] || '') + m[2]; }
+
+function cardPro(p) {
+  return `<article class="card">
+    <div class="pro-top">
+      <span class="avatar">${esc(iniciais(p.nome))}</span>
+      <div><h3>${esc(p.nome)}</h3>${p.esp ? `<small>${esc(p.esp)}</small>` : ''}</div>
+    </div>
+    <div class="card-actions"><button class="icon-btn danger" data-a="del-pro" data-id="${p.id}" aria-label="Excluir profissional">${ic.trash}</button></div>
+    <div class="pro-info">
+      ${p.tel ? `${esc(p.tel)}<br>` : ''}
+      ${p.email ? `<a href="mailto:${esc(p.email)}" onclick="event.preventDefault()">${esc(p.email)}</a>` : ''}
+    </div>
+    <button class="btn-soft" data-a="send-pro" data-id="${p.id}">${ic.send} Quer mandar algo pra ${esc(primeiro(p.nome))}? São só alguns toques.</button>
+  </article>`;
+}
+
+const TABS = [['diario', 'Diário', 'book'], ['rotina', 'Rotina', 'cal'], ['pasta', 'Pasta', 'folder'], ['lyai', 'Lyai', 'spark']];
+
+function render() {
+  const scrollEl = view.querySelector('.scroll');
+  const keep = scrollEl ? scrollEl.scrollTop : 0;
+  const sameTab = view.dataset.tab === state.tab;
+  view.innerHTML = state.tab === 'diario' ? viewDiario() : state.tab === 'rotina' ? viewRotina() : viewPasta();
+  view.dataset.tab = state.tab;
+  if (sameTab) { const s = view.querySelector('.scroll'); if (s) s.scrollTop = keep; }
+  state.lyaiFresh = false;
+  tabbar.innerHTML = TABS.map(([k, l, i]) => k === 'lyai'
+    ? `<button class="tab off" data-a="lyai-tab" aria-disabled="true"><span class="pill">${ic[i]}</span>${l}<span class="soon">em breve</span></button>`
+    : `<button class="tab ${state.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}" aria-current="${state.tab === k ? 'page' : 'false'}"><span class="pill">${ic[i]}</span>${l}</button>`
+  ).join('');
+}
+
+/* ===== Modais e toast ===== */
+function openModal(html, mount, opts = {}) {
+  closeModal();
+  const ov = document.createElement('div');
+  ov.className = 'overlay ' + (opts.full ? 'full' : '');
+  ov.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  ov.addEventListener('click', e => {
+    if (e.target.closest('[data-close]')) { closeModal(); return; }
+    if (e.target === ov && !opts.lock) closeModal();
+  });
+  phone.appendChild(ov);
+  if (mount) mount(ov);
+  const first = ov.querySelector('input,textarea,button');
+  if (first && !opts.noFocus) setTimeout(() => first.focus({ preventScroll: true }), 30);
+  return ov;
+}
+function closeModal() { phone.querySelectorAll('.overlay').forEach(o => o.remove()); }
+
+let toastT;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function erro(field, st, msg = 'Faltou só um detalhe aqui.') {
+  field.classList.remove('invalid'); void field.offsetWidth; field.classList.add('invalid');
+  st.className = 'status err'; st.textContent = msg; field.focus();
+  field.addEventListener('input', () => { field.classList.remove('invalid'); if (st.classList.contains('err')) { st.textContent = ''; st.className = 'status'; } }, { once: true });
+}
+
+function chipGroup(box, onPick) {
+  box.addEventListener('click', e => {
+    const c = e.target.closest('[data-t]'); if (!c) return;
+    box.querySelectorAll('.chip').forEach(x => { x.classList.toggle('on', x === c); x.setAttribute('aria-pressed', x === c); });
+    onPick(c.dataset.t);
+  });
+}
+const chipsHTML = (list, sel, cls = '') => list.map(t => `<button class="chip ${cls} ${t === sel ? 'on' : ''}" data-t="${t}" aria-pressed="${t === sel}">${t}</button>`).join('');
+
+function confirmar(onOk, texto = 'Essa aqui não tem volta.') {
+  openModal(`<h2>Tem certeza?</h2><p class="body">${texto}</p>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button><button class="btn-text danger" id="c-ok">Excluir</button></div>`,
+    ov => { ov.querySelector('#c-ok').onclick = () => { closeModal(); onOk(); }; });
+}
+
+function shareSheet(titulo, sub, alvo) {
+  openModal(`<h2>${titulo}</h2><p class="body">${sub}</p>
+    <div class="share-row">
+      <button class="share-btn" data-via="WhatsApp">${ic.chat} WhatsApp</button>
+      <button class="share-btn" data-via="E-mail">${ic.mail} E-mail</button>
+      <button class="share-btn wide" data-via="copiar">${ic.copy} Copiar texto</button>
+    </div>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button></div>`, ov => {
+    ov.querySelectorAll('[data-via]').forEach(b => b.onclick = () => {
+      closeModal();
+      const via = b.dataset.via;
+      toast(via === 'copiar' ? 'Copiado. Agora é só colar onde quiser.' : `Pronto${alvo ? ' pra ' + alvo : ''}. No app real, isso abriria o ${via}.`);
+    });
+  });
+}
+
+/* ===== Onboarding ===== */
+function onboarding() {
+  const passos = [
+    `<div class="big-avatar">${ic.spark}</div><h2>Oi, eu sou a Lyai.</h2>
+     <p class="body">Vim te ajudar a organizar a cabeça. Sem julgamento, sem enrolação.</p>`,
+    `<h2>Antes da gente começar</h2>
+     <p class="body">Eu não sou psicóloga. Sou a parceira que segura a ponta entre uma sessão e outra.</p>
+     <p class="body">Seus registros ficam com você. Nada sai daqui sem você escolher.</p>
+     <p class="body">E aqui o essencial é sempre gratuito. Sem letra miúda.</p>`
+  ];
+  let i = 0;
+  const ov = openModal('<div id="ob"></div>', null, { lock: true });
+  const box = ov.querySelector('#ob');
+  const draw = () => {
+    box.innerHTML = `<div class="steps">${passos.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>${passos[i]}
+      <div class="actions">${i === 0 ? '<button class="btn-text" data-close>Pular</button>' : ''}
+      <button class="btn-primary" id="ob-next">${i === passos.length - 1 ? 'Bora começar' : 'Continuar'}</button></div>`;
+    box.querySelector('#ob-next').onclick = () => { if (i < passos.length - 1) { i++; draw(); } else closeModal(); };
+    box.querySelector('#ob-next').focus({ preventScroll: true });
+  };
+  draw();
+}
+
+/* ===== Diário ===== */
+function autoTitulo(t) { const w = t.split(/\s+/).slice(0, 5).join(' '); return w.length < t.length ? w + '…' : w; }
+
+function modalPensamento() {
+  let tipo = 'Pensamento', timer;
+  openModal(`<h2>O que tá passando pela sua cabeça?</h2>
+    <p class="sub">Isso é sobre o quê?</p>
+    <div class="chips wrap" id="m-tipos">${chipsHTML(TIPOS_DIARIO, tipo)}</div>
+    <input class="field" id="m-titulo" placeholder="Dá um nome pra isso (se quiser)" maxlength="60" aria-label="Título, opcional">
+    <div class="area-wrap">
+      <textarea class="field area" id="m-texto" placeholder="Escreve ou grava, do jeito que for mais fácil agora." aria-label="Seu registro"></textarea>
+      <button class="mic" id="m-mic" aria-label="Gravar áudio">${ic.mic}</button>
+    </div>
+    <p class="status" id="m-status" aria-live="polite"></p>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button><button class="btn-primary" id="m-ok">Guardar</button></div>`,
+  ov => {
+    chipGroup(ov.querySelector('#m-tipos'), v => tipo = v);
+    const tx = ov.querySelector('#m-texto'), st = ov.querySelector('#m-status'), mic = ov.querySelector('#m-mic');
+    const autosave = () => {
+      if (st.classList.contains('err')) return;
+      st.className = 'status'; st.textContent = 'Salvando…';
+      clearTimeout(timer); timer = setTimeout(() => { st.textContent = 'Salvo. Sem esforço, como deve ser.'; }, 700);
+    };
+    tx.addEventListener('input', autosave);
+    mic.onclick = () => {
+      if (mic.classList.contains('rec')) return;
+      mic.classList.add('rec'); mic.setAttribute('aria-label', 'Gravando');
+      st.className = 'status'; st.textContent = 'Gravando… fala com calma.';
+      setTimeout(() => {
+        mic.classList.remove('rec'); mic.setAttribute('aria-label', 'Gravar áudio');
+        tx.value = (tx.value ? tx.value + ' ' : '') + 'A reunião de hoje me deixou ansiosa. Quero levar isso pra próxima sessão.';
+        autosave();
+      }, 1800);
+    };
+    ov.querySelector('#m-ok').onclick = () => {
+      const texto = tx.value.trim();
+      if (!texto) { erro(tx, st); return; }
+      const titulo = ov.querySelector('#m-titulo').value.trim() || autoTitulo(texto);
+      state.entries.push({ id: newId(), tipo, titulo, texto, data: new Date(), fav: false });
+      state.filtro = 'todos';
+      closeModal();
+      if (sensivel(texto)) { lyaiSay('Tô aqui. Sem pressa.'); render(); modalSensivel(); }
+      else { lyaiSay(RESP[tipo]); render(); toast('Feito. Já tá seguro com a gente.'); }
+    };
+  }, { noFocus: true });
+  setTimeout(() => phone.querySelector('#m-texto')?.focus({ preventScroll: true }), 30);
+}
+
+/* Momento sensível: sem humor, sem pressa, sem diagnóstico */
+function modalSensivel() {
+  openModal(`<div id="sv">
+    <h2>Percebi que talvez as coisas estejam pesadas agora.</h2>
+    <p class="body">Eu não substituo ajuda profissional, mas posso te mostrar opções de apoio, se quiser.</p>
+    <div class="stack">
+      <button class="btn-primary block" id="sv-ver">Ver opções de apoio</button>
+      <button class="btn-text block" data-close>Não agora, só queria registrar</button>
+    </div></div>`, ov => {
+    ov.querySelector('#sv-ver').onclick = () => {
+      const temPro = state.pros.length > 0;
+      ov.querySelector('#sv').innerHTML = `
+        <h2>Opções de apoio</h2>
+        <p class="body">Você pode escolher o que fizer mais sentido agora.</p>
+        <ul class="apoio">
+          <li><b>CVV · Centro de Valorização da Vida</b>Ligação gratuita para o 188, 24 horas. Também tem chat em <a href="https://cvv.org.br" target="_blank" rel="noopener">cvv.org.br</a>.</li>
+          <li><b>CAPS</b>Atendimento em saúde mental pelo SUS, na sua cidade.</li>
+          <li><b>Se for uma emergência</b>Ligue para o SAMU (192) ou vá ao pronto-socorro mais próximo.</li>
+        </ul>
+        <div class="stack">
+          ${temPro ? `<button class="btn-primary block" id="sv-pro">Falar com quem cuida de mim</button>` : ''}
+          <button class="btn-text block" data-close>Voltar pro diário</button>
+        </div>`;
+      const b = ov.querySelector('#sv-pro');
+      if (b) b.onclick = () => { closeModal(); state.tab = 'pasta'; state.pastaTab = 'pros'; render(); };
+    };
+  });
+}
+
+/* ===== Rotina ===== */
+function proximaHora() { const d = new Date(); return `${pad((d.getHours() + 1) % 24)}:00`; }
+function labelDia(k) { const [y, m, d] = k.split('-').map(Number); const dt = new Date(y, m - 1, d); return `${DIAS[dt.getDay()]}, ${pad(d)}/${pad(m)}`; }
+
+function modalCompromisso() {
+  let tipo = 'Tarefa', prio = 'Média';
+  openModal(`<h2>Novo compromisso</h2>
+    <p class="sub">Que tipo de compromisso é esse?</p>
+    <div class="chips wrap" id="c-tipos">${chipsHTML(TIPOS_ROT, tipo)}</div>
+    <input class="field" id="c-titulo" placeholder="Dá um nome pra isso" maxlength="60" aria-label="Nome do compromisso">
+    <input class="field" id="c-desc" placeholder="Escreve rapidinho o que é (se quiser)" maxlength="90" aria-label="Descrição, opcional">
+    <div class="row"><label>Dia</label><span class="date">${labelDia(state.dia)}</span></div>
+    <div class="row"><label for="c-hora">Horário</label><input type="time" class="time" id="c-hora" value="${proximaHora()}"></div>
+    <div class="row"><label>Prioridade</label><div class="chips" id="c-prio">${chipsHTML(PRIO, prio, 'sm')}</div></div>
+    <p class="help">Alta aparece com destaque e o aviso insiste um pouco mais.</p>
+    <div class="row"><span class="toggle-label" id="c-lbl">Quer que eu te avise?</span>
+      <button class="toggle" id="c-avisar" role="switch" aria-checked="true" aria-labelledby="c-lbl"></button></div>
+    <p class="status" id="c-status" aria-live="polite"></p>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button><button class="btn-primary" id="c-ok">Guardar</button></div>`,
+  ov => {
+    chipGroup(ov.querySelector('#c-tipos'), v => tipo = v);
+    chipGroup(ov.querySelector('#c-prio'), v => prio = v);
+    const tg = ov.querySelector('#c-avisar');
+    tg.onclick = () => tg.setAttribute('aria-checked', tg.getAttribute('aria-checked') !== 'true');
+    ov.querySelector('#c-ok').onclick = () => {
+      const t = ov.querySelector('#c-titulo'), st = ov.querySelector('#c-status');
+      if (!t.value.trim()) { erro(t, st); return; }
+      const avisar = tg.getAttribute('aria-checked') === 'true';
+      state.appts.push({ id: newId(), dia: state.dia, tipo, prio, titulo: t.value.trim(), desc: ov.querySelector('#c-desc').value.trim(),
+        hora: ov.querySelector('#c-hora').value || '09:00', avisar, feito: false });
+      closeModal(); render();
+      toast(avisar ? 'Marcado. Eu aviso na hora certa.' : 'Marcado.');
+    };
+  });
+}
+
+function notificar(a) {
+  const semHumor = a.tipo === 'Medicamento' || a.tipo === 'Consulta';
+  openModal(`<div id="nt">
+    <p class="notif-app">${ic.spark} Neuro Next · agora</p>
+    <h2>Ei, é agora:</h2>
+    <p class="notif-title">${esc(a.titulo)}</p>
+    <p class="notif-desc">${a.hora}${a.desc ? ' · ' + esc(a.desc) : ''}</p>
+    <div class="stack">
+      <button class="btn-primary light block" id="nt-ok">Concluído</button>
+      <button class="btn-ghost block" id="nt-adiar">Adiar</button>
+      <button class="btn-text block" id="nt-abrir" style="color:#fff">Abrir</button>
+    </div></div>`, ov => {
+    ov.querySelector('#nt-ok').onclick = () => { a.feito = true; closeModal(); render(); toast('Um a menos. Boa.'); };
+    ov.querySelector('#nt-abrir').onclick = () => { closeModal(); state.tab = 'rotina'; state.dia = a.dia; render(); };
+    ov.querySelector('#nt-adiar').onclick = () => {
+      ov.querySelector('#nt').innerHTML = `<h2>${semHumor ? 'Tudo bem.' : 'Combinado.'}</h2>
+        <p class="notif-desc" style="margin-top:12px">${semHumor
+          ? 'Te aviso de novo daqui a pouco.'
+          : 'Todo mundo merece um respiro. Te aviso de novo daqui a pouco.'}</p>`;
+      setTimeout(closeModal, 2200);
+    };
+  }, { full: true, lock: true });
+}
+
+/* ===== Pasta ===== */
+function modalDoc() {
+  let tipo = 'Laudo', arquivo = '';
+  openModal(`<h2>Adicionar documento</h2>
+    <p class="sub">Isso é o quê?</p>
+    <div class="chips wrap" id="d-tipos">${chipsHTML(TIPOS_DOC, tipo)}</div>
+    <input class="field" id="d-nome" placeholder="Nome do documento" maxlength="70" aria-label="Nome do documento">
+    <input class="field" id="d-obs" placeholder="Observações (se quiser)" maxlength="90" aria-label="Observações, opcional">
+    <div class="two">
+      <button class="opt" id="d-scan">${ic.scan}Digitalizar</button>
+      <button class="opt" id="d-up">${ic.upload}Subir arquivo</button>
+      <input type="file" id="d-file" hidden accept=".pdf,image/*">
+    </div>
+    <p class="status" id="d-status" aria-live="polite"></p>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button><button class="btn-primary" id="d-ok">Guardar</button></div>`,
+  ov => {
+    chipGroup(ov.querySelector('#d-tipos'), v => tipo = v);
+    const st = ov.querySelector('#d-status'), scan = ov.querySelector('#d-scan'), up = ov.querySelector('#d-up'), file = ov.querySelector('#d-file');
+    const anexar = (nome, btn) => {
+      arquivo = nome; scan.classList.remove('ok'); up.classList.remove('ok'); btn.classList.add('ok');
+      st.className = 'status'; st.textContent = `Anexado: ${nome}`;
+    };
+    scan.onclick = () => { st.className = 'status'; st.textContent = 'Abrindo a câmera…'; setTimeout(() => anexar(`foto-${Date.now().toString().slice(-4)}.jpg`, scan), 900); };
+    up.onclick = () => file.click();
+    file.onchange = () => { if (file.files[0]) anexar(file.files[0].name, up); };
+    ov.querySelector('#d-ok').onclick = () => {
+      const n = ov.querySelector('#d-nome');
+      if (!n.value.trim()) { erro(n, st); return; }
+      if (!arquivo) { st.className = 'status err'; st.textContent = 'Faltou só anexar o arquivo.'; return; }
+      state.docs.push({ id: newId(), tipo, nome: n.value.trim(), obs: ov.querySelector('#d-obs').value.trim(), arquivo });
+      closeModal(); render(); toast('Guardado. Fácil de achar quando você precisar.');
+    };
+  });
+}
+
+function modalPro() {
+  openModal(`<h2>Novo profissional</h2>
+    <p class="body">Pode ser da saúde ou não: psicóloga, nutricionista, contador…</p>
+    <div style="height:12px"></div>
+    <input class="field" id="p-nome" placeholder="Nome" aria-label="Nome">
+    <input class="field" id="p-tel" placeholder="Número de telefone" inputmode="tel" aria-label="Telefone">
+    <input class="field" id="p-esp" placeholder="Especialidade" aria-label="Especialidade">
+    <input class="field" id="p-email" placeholder="E-mail do profissional" inputmode="email" aria-label="E-mail">
+    <p class="status" id="p-status" aria-live="polite"></p>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button><button class="btn-primary" id="p-ok">Guardar</button></div>`,
+  ov => {
+    ov.querySelector('#p-ok').onclick = () => {
+      const n = ov.querySelector('#p-nome'), st = ov.querySelector('#p-status');
+      if (!n.value.trim()) { erro(n, st); return; }
+      const email = ov.querySelector('#p-email');
+      if (email.value.trim() && !/^\S+@\S+\.\S+$/.test(email.value.trim())) { erro(email, st, 'Esse e-mail parece incompleto.'); return; }
+      state.pros.push({ id: newId(), nome: n.value.trim(), tel: ov.querySelector('#p-tel').value.trim(),
+        esp: ov.querySelector('#p-esp').value.trim(), email: email.value.trim() });
+      state.pastaTab = 'pros';
+      closeModal(); render(); toast('Guardado. Agora é só chamar quando precisar.');
+    };
+  });
+}
+
+/* Compartilhar documento já vinculado a um profissional (achado do teste de usabilidade) */
+function shareDoc(d) {
+  if (!state.pros.length) {
+    openModal(`<h2>Pra quem vai?</h2><p class="body">Você ainda não cadastrou ninguém. Adiciona quem cuida de você e já manda daqui.</p>
+      <div class="actions"><button class="btn-text" data-close>Agora não</button><button class="btn-primary" id="x-add">Adicionar</button></div>`,
+      ov => ov.querySelector('#x-add').onclick = modalPro);
+    return;
+  }
+  openModal(`<h2>Compartilhar documento</h2>
+    <p class="body">${esc(d.nome)}</p>
+    <p class="sub" style="margin-top:14px">Pra quem vai?</p>
+    <div class="pick">${state.pros.map((p, i) => `<label><input type="radio" name="pro" value="${p.id}" ${i === 0 ? 'checked' : ''}>
+      <span><b>${esc(p.nome)}</b>${p.esp ? `<br><small>${esc(p.esp)}</small>` : ''}</span></label>`).join('')}</div>
+    <div class="share-row">
+      <button class="share-btn" data-via="WhatsApp">${ic.chat} WhatsApp</button>
+      <button class="share-btn" data-via="E-mail">${ic.mail} E-mail</button>
+    </div>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button></div>`, ov => {
+    ov.querySelectorAll('[data-via]').forEach(b => b.onclick = () => {
+      const pid = +ov.querySelector('input[name=pro]:checked').value;
+      const p = state.pros.find(x => x.id === pid);
+      closeModal(); toast(`Enviado pra ${p.nome} por ${b.dataset.via}. (simulado)`);
+    });
+  });
+}
+
+function sendToPro(p) {
+  if (!state.docs.length) { toast('Ainda não tem documento na pasta. Adiciona um primeiro.'); return; }
+  openModal(`<h2>O que você quer mandar pra ${esc(primeiro(p.nome))}?</h2>
+    <div class="pick">${state.docs.map(d => `<label><input type="checkbox" value="${d.id}"><span>${esc(d.nome)}</span></label>`).join('')}</div>
+    <p class="status" id="s-status" aria-live="polite" style="margin-top:8px"></p>
+    <div class="share-row">
+      <button class="share-btn" data-via="WhatsApp">${ic.chat} WhatsApp</button>
+      <button class="share-btn" data-via="E-mail">${ic.mail} E-mail</button>
+    </div>
+    <div class="actions"><button class="btn-text" data-close>Cancelar</button></div>`, ov => {
+    ov.querySelectorAll('[data-via]').forEach(b => b.onclick = () => {
+      const n = ov.querySelectorAll('input:checked').length;
+      const st = ov.querySelector('#s-status');
+      if (!n) { st.className = 'status err'; st.textContent = 'Escolhe pelo menos um documento.'; return; }
+      closeModal(); toast(`${n} ${n > 1 ? 'documentos enviados' : 'documento enviado'} pra ${p.nome}. (simulado)`);
+    });
+  }, { noFocus: true });
+}
+
+/* ===== Eventos ===== */
+phone.querySelector('.app').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]');
+  if (!b) { if (state.menu !== null) { state.menu = null; render(); } return; }
+  const a = b.dataset.a, id = +b.dataset.id, v = b.dataset.v;
+  if (a !== 'menu') state.menu = null;
+  const entry = () => state.entries.find(x => x.id === id);
+  const appt = () => state.appts.find(x => x.id === id);
+
+  switch (a) {
+    case 'tab': state.tab = v; render(); break;
+    case 'lyai-tab': toast('A Lyai tá chegando por aqui. Por enquanto, ela te acompanha nas outras abas.'); break;
+    case 'filtro': state.filtro = v; render(); break;
+    case 'novo-pensamento': render(); modalPensamento(); break;
+    case 'menu': state.menu = state.menu === id ? null : id; render(); break;
+    case 'fav': { const x = entry(); x.fav = !x.fav; render(); toast(x.fav ? 'Favoritado.' : 'Saiu dos favoritos.'); break; }
+    case 'share-entry': render(); shareSheet('Compartilhar este pensamento?', 'Só você escolhe o que sai daqui.'); break;
+    case 'del-entry': render(); confirmar(() => { state.entries = state.entries.filter(x => x.id !== id); render(); toast('Excluído.'); }); break;
+
+    case 'dia': state.dia = v; render(); break;
+    case 'novo-compromisso': modalCompromisso(); break;
+    case 'feito': { const x = appt(); x.feito = !x.feito; render(); if (x.feito) toast('Um a menos. Boa.'); break; }
+    case 'notif': notificar(appt()); break;
+    case 'share-appt': shareSheet('Compartilhar compromisso', esc(appt().titulo)); break;
+    case 'del-appt': confirmar(() => { state.appts = state.appts.filter(x => x.id !== id); render(); toast('Excluído.'); }); break;
+
+    case 'ptab': state.pastaTab = v; render(); break;
+    case 'novo-doc': modalDoc(); break;
+    case 'novo-pro': modalPro(); break;
+    case 'share-doc': shareDoc(state.docs.find(x => x.id === id)); break;
+    case 'del-doc': confirmar(() => { state.docs = state.docs.filter(x => x.id !== id); render(); toast('Excluído.'); }); break;
+    case 'del-pro': confirmar(() => { state.pros = state.pros.filter(x => x.id !== id); render(); toast('Excluído.'); }, 'O contato sai da sua pasta, mas os documentos continuam aqui.'); break;
+    case 'send-pro': sendToPro(state.pros.find(x => x.id === id)); break;
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const ov = phone.querySelector('.overlay');
+  if (ov && !ov.classList.contains('full')) closeModal();
+  else if (state.menu !== null) { state.menu = null; render(); }
+});
+
+/* ===== Escala do celular para caber na tela / no embed ===== */
+function fit() {
+  const hint = document.getElementById('hint');
+  const avail = window.innerHeight - hint.offsetHeight - 34;
+  const s = Math.max(0.45, Math.min(1, avail / 800, (window.innerWidth - 24) / 390));
+  phone.style.transform = `scale(${s})`;
+  const frame = document.getElementById('frame');
+  frame.style.width = 390 * s + 'px';
+  frame.style.height = 800 * s + 'px';
+}
+function tick() { const d = new Date(); document.getElementById('clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+window.addEventListener('resize', fit);
+tick(); setInterval(tick, 30000);
+render(); fit(); onboarding();
+</script>
+</body>
+</html>
